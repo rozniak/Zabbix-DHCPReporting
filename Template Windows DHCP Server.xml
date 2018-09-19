@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>3.4</version>
-    <date>2018-09-19T09:53:01Z</date>
+    <date>2018-09-19T12:03:38Z</date>
     <groups>
         <group>
             <name>Servers - DHCP - Windows</name>
@@ -25,11 +25,11 @@
             <items>
                 <item>
                     <name>DHCP leases remaining</name>
-                    <type>7</type>
+                    <type>2</type>
                     <snmp_community/>
                     <snmp_oid/>
                     <key>dhcp.freeleases</key>
-                    <delay>30s</delay>
+                    <delay>0</delay>
                     <history>90d</history>
                     <trends>365d</trends>
                     <status>0</status>
