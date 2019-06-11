@@ -59,4 +59,6 @@ $addressesRemaining = $addressSpace - $leaseCount;
 
 # Push value to Zabbix
 #
-& ($env:ProgramFiles + "\Zabbix Agent\bin\win64\zabbix_sender.exe") ("-z", $ZabbixIP, "-p", "10051", "-s", $ComputerName, "-k", "dhcp.freeleases", "-o", $addressesRemaining)
+$arch = [System.IntPtr]::Size * 8;
+
+& ($env:ProgramFiles + "\Zabbix Agent\bin\win" + $arch + "\zabbix_sender.exe") ("-z", $ZabbixIP, "-p", "10051", "-s", $ComputerName, "-k", "dhcp.freeleases", "-o", $addressesRemaining);
