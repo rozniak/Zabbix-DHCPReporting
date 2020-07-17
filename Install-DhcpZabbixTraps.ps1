@@ -35,14 +35,17 @@ Param (
     $ComputerName = $env:COMPUTERNAME
 )
 
-$globalTrigger = New-ScheduledTaskTrigger -Daily -At 8am
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition;
+
+$globalTrigger   = New-ScheduledTaskTrigger -Daily -At 8am
+$guid            = Get-Content -Path "$scriptRoot\task-guid"
 $systemPrincipal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
 
 # Set up content size scheduled task
 #
 $dhcpLeaseAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument ('-NoProfile -NoLogo -File "' + $env:ProgramFiles + '\Zabbix Agent\DHCPREPORTS\Get-DhcpLeasesAvailable.ps1" -ZabbixIP ' + $ZabbixIP + ' -ComputerName ' + $ComputerName)
 
-$dhcpLeaseTask = Register-ScheduledTask -TaskName "Calculate Available DHCP Leases (Zabbix Trap)" -Trigger $globalTrigger -Action $dhcpLeaseAction -Principal $systemPrincipal
+$dhcpLeaseTask = Register-ScheduledTask -TaskName "Calculate Available DHCP Leases (Zabbix Trap)" -Trigger $globalTrigger -Action $dhcpLeaseAction -Principal $systemPrincipal -Description $guid
 
 $dhcpLeaseTask.Triggers[0].Repetition.Interval = "PT1H"
 $dhcpLeaseTask | Set-ScheduledTask
