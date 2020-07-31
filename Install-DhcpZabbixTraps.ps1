@@ -14,6 +14,9 @@
     .PARAMETER ComputerName
     The hostname that should be reported to Zabbix, in case the hostname you set up in
     Zabbix isn't exactly the same as this computer's name.
+
+    .PARAMETER ZabbixRoot
+    The root directory of the Zabbix Agent installation.
     
     .EXAMPLE
     Install-DhcpZabbixTraps.ps1 -ZabbixIP 10.0.0.240
@@ -27,25 +30,52 @@
 Param (
     [Parameter(Position=0, Mandatory=$TRUE)]
     [ValidatePattern("^(\d+\.){3}\d+$")]
-    [String]
+    [string]
     $ZabbixIP,
     [Parameter(Position=1, Mandatory=$FALSE)]
     [ValidatePattern(".+")]
-    [String]
-    $ComputerName = $env:COMPUTERNAME
+    [string]
+    $ComputerName = $env:COMPUTERNAME,
+    [Parameter(Position=2, Mandatory=$FALSE)]
+    [string]
+    $ZabbixRoot   = $env:ProgramFiles + "\Zabbix Agent"
 )
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition;
 
-$globalTrigger   = New-ScheduledTaskTrigger -Daily -At 8am
-$guid            = Get-Content -Path "$scriptRoot\task-guid"
-$systemPrincipal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+$oneHour  = New-TimeSpan -Hours 1;
+$tomorrow = [System.DateTime]::Today.AddDays(1);
+
+$guid          = Get-Content -Path "$scriptRoot\task-guid";
+$systemAccount = New-ScheduledTaskPrincipal -UserID    "NT AUTHORITY\SYSTEM" `
+                                            -LogonType ServiceAccount        `
+                                            -RunLevel  Highest;
 
 # Set up content size scheduled task
 #
-$dhcpLeaseAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument ('-NoProfile -NoLogo -File "' + $env:ProgramFiles + '\Zabbix Agent\DHCPREPORTS\Get-DhcpLeasesAvailable.ps1" -ZabbixIP ' + $ZabbixIP + ' -ComputerName ' + $ComputerName)
+$dhcpLeaseFilePath   = "$ZabbixRoot\DHCPREPORTS\Get-DhcpLeasesAvailable.ps1";
+$dhcpLeaseTitle      = "Calculate Available DHCP Leases (Zabbix Trap)";
 
-$dhcpLeaseTask = Register-ScheduledTask -TaskName "Calculate Available DHCP Leases (Zabbix Trap)" -Trigger $globalTrigger -Action $dhcpLeaseAction -Principal $systemPrincipal -Description $guid
+$dhcpLeaseTrigger    = New-ScheduledTaskTrigger -Once                         `
+                                                -At $tomorrow                 `
+                                                -RepetitionInterval $oneHour;
+$dhcpLeaseActionArgs =
+    (
+        "-NoProfile",
+        "-NoLogo",
+        "-File",
+        "`"$ZabbixRoot`"",
+        "-ZabbixIP",
+        $ZabbixIP,
+        "-ComputerName",
+        $ComputerName
+    ) -join " ";
+$dhcpLeaseAction     = New-ScheduledTaskAction -Execute  "powershell.exe"     `
+                                               -Argument $dhcpLeaseActionArgs;
 
-$dhcpLeaseTask.Triggers[0].Repetition.Interval = "PT1H"
-$dhcpLeaseTask | Set-ScheduledTask
+$dhcpLeaseTask = Register-ScheduledTask -TaskName    $dhcpLeaseTitle   `
+                                        -Trigger     $dhcpLeaseTrigger `
+                                        -Action      $dhcpLeaseAction  `
+                                        -Principal   $systemAccount    `
+                                        -Description $guid             `
+                 | Out-Null;
