@@ -52,13 +52,28 @@ Function Swap-Endian
 
 $dhcpScope = (Get-DhcpServerv4Scope)[0];
 
-$addressSpace = (Swap-Endian -LittleValue $dhcpScope.EndRange.Address) -
-                (Swap-Endian -LittleValue $dhcpScope.StartRange.Address);
-$leaseCount = (Get-DhcpServerv4Lease -ScopeId $dhcpScope.ScopeId.ToString()).Length;
-$addressesRemaining = $addressSpace - $leaseCount;
+$addressSpace    = (Swap-Endian -LittleValue $dhcpScope.EndRange.Address) -
+                   (Swap-Endian -LittleValue $dhcpScope.StartRange.Address);
+$leaseCount      = (Get-DhcpServerv4Lease -ScopeId $dhcpScope.ScopeId).Length;
+$leasesRemaining = $addressSpace - $leaseCount;
 
 # Push value to Zabbix
 #
-$arch = [System.IntPtr]::Size * 8;
+$zabbixArgs =
+    (
+        "-z",
+        $ZabbixIP,
+        "-p",
+        "10051",
+        "-s",
+        $ComputerName,
+        "-k",
+        "dhcp.freeleases",
+        "-o",
+        $leasesRemaining
+    );
+$zabbixSender = Get-ChildItem -Path   ($env:ProgramFiles + "\Zabbix Agent") `
+                              -Filter "zabbix_sender.exe"                   `
+                              -Recurse;
 
-& ($env:ProgramFiles + "\Zabbix Agent\bin\win" + $arch + "\zabbix_sender.exe") ("-z", $ZabbixIP, "-p", "10051", "-s", $ComputerName, "-k", "dhcp.freeleases", "-o", $addressesRemaining);
+& $zabbixSender.FullName $zabbixArgs;
