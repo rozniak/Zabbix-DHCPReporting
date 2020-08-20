@@ -64,7 +64,7 @@ $dhcpLeaseActionArgs =
         "-NoProfile",
         "-NoLogo",
         "-File",
-        "`"$ZabbixRoot`"",
+        "`"$dhcpLeaseFilePath`"",
         "-ZabbixIP",
         $ZabbixIP,
         "-ComputerName",
