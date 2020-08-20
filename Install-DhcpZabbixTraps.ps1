@@ -43,9 +43,12 @@ Param (
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition;
 
+$nextHour = [System.DateTime]::Now.AddHours(1);
 $oneHour  = New-TimeSpan -Hours 1;
-$tomorrow = [System.DateTime]::Today.AddDays(1);
 
+$globalTrigger = New-ScheduledTaskTrigger -Once                         `
+                                          -At                 $nextHour `
+                                          -RepetitionInterval $oneHour;
 $guid          = Get-Content -Path "$scriptRoot\task-guid";
 $systemAccount = New-ScheduledTaskPrincipal -UserID    "NT AUTHORITY\SYSTEM" `
                                             -LogonType ServiceAccount        `
@@ -56,9 +59,6 @@ $systemAccount = New-ScheduledTaskPrincipal -UserID    "NT AUTHORITY\SYSTEM" `
 $dhcpLeaseFilePath   = "$ZabbixRoot\DHCPREPORTS\Get-DhcpLeasesAvailable.ps1";
 $dhcpLeaseTitle      = "Calculate Available DHCP Leases (Zabbix Trap)";
 
-$dhcpLeaseTrigger    = New-ScheduledTaskTrigger -Once                         `
-                                                -At $tomorrow                 `
-                                                -RepetitionInterval $oneHour;
 $dhcpLeaseActionArgs =
     (
         "-NoProfile",
@@ -73,9 +73,9 @@ $dhcpLeaseActionArgs =
 $dhcpLeaseAction     = New-ScheduledTaskAction -Execute  "powershell.exe"     `
                                                -Argument $dhcpLeaseActionArgs;
 
-$dhcpLeaseTask = Register-ScheduledTask -TaskName    $dhcpLeaseTitle   `
-                                        -Trigger     $dhcpLeaseTrigger `
-                                        -Action      $dhcpLeaseAction  `
-                                        -Principal   $systemAccount    `
-                                        -Description $guid             `
+$dhcpLeaseTask = Register-ScheduledTask -TaskName    $dhcpLeaseTitle  `
+                                        -Trigger     $globalTrigger   `
+                                        -Action      $dhcpLeaseAction `
+                                        -Principal   $systemAccount   `
+                                        -Description $guid            `
                  | Out-Null;
